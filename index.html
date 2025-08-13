@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>EV Charge Time & Cost Calculator</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #111827;
+    --muted: #9ca3af;
+    --text: #e5e7eb;
+    --accent: #22d3ee;
+    --accent2: #a78bfa;
+  }
+  html, body {
+    background: radial-gradient(80vw 80vh at 20% 0%, #0b1225 0%, var(--bg) 40%, #0b1225 100%);
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui;
+    margin: 0;
+    padding: 0;
+  }
+  .wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px 64px; }
+  h1 { font-weight: 800; font-size: clamp(28px, 4vw, 44px); margin: 8px 0 12px; }
+  .sub { color: var(--muted); margin-bottom: 18px; }
+  .grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: linear-gradient(180deg, #0f172aAA, #0b122580); border: 1px solid #1f2937; border-radius: 14px; padding: 16px; backdrop-filter: blur(6px); }
+  label { font-size: 13px; color: var(--muted); display: block; margin: 8px 0 6px; }
+  input[type="number"], select {
+    width: 100%; background: #0b1225; color: var(--text); border: 1px solid #1f2937; border-radius: 10px; padding: 10px 12px; font-size: 14px;
+  }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .pill { display: inline-block; border: 1px solid #1f2937; padding: 6px 10px; border-radius: 999px; font-size: 12px; color: #cbd5e1; cursor: pointer; }
+  .pill.active { border-color: var(--accent); color: #e0f2fe; box-shadow: 0 0 0 1px #0ea5b680 inset; }
+  .kpi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+  .kpi .box { background: #0b1225; border: 1px solid #1f2937; border-radius: 12px; padding: 12px; }
+  .kpi .label { color: var(--muted); font-size: 12px; }
+  .kpi .value { font-size: 20px; font-weight: 700; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+  th, td { border-bottom: 1px solid #1f2937; padding: 8px; text-align: left; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>EV Charge Time & Cost Calculator</h1>
+  <div class="sub">Estimate charge time and cost from a chosen state-of-charge using common charger sizes.</div>
+
+  <div class="grid">
+    <div class="card">
+      <label>Choose EV (battery size)</label>
+      <select id="vehicle">
+        <option value="66">Chevrolet Bolt 66kWh</option>
+        <option value="60">Chevrolet Bolt 60kWh</option>
+        <option value="63">Tesla Model Y ~63kWh (SR)</option>
+        <option value="75">Tesla Model Y ~75kWh (LR)</option>
+        <option value="83">Tesla Model Y ~83kWh</option>
+        <option value="119">Chevrolet Silverado EV ~119kWh</option>
+        <option value="170">Chevrolet Silverado EV ~170kWh</option>
+        <option value="205">Chevrolet Silverado EV ~205kWh</option>
+        <option value="100">Cadillac Lyriq 100kWh (usable)</option>
+        <option value="102">Cadillac Lyriq 102kWh (rated)</option>
+        <option value="85">Chevrolet Equinox EV 85kWh (usable)</option>
+        <option value="98">Ford F‑150 Lightning SR 98kWh</option>
+        <option value="131">Ford F‑150 Lightning ER 131kWh</option>
+        <option value="63">Hyundai Ioniq 5 SR 63kWh (gross)</option>
+        <option value="84">Hyundai Ioniq 5 LR 84kWh (gross)</option>
+        <option value="custom">Custom...</option>
+      </select>
+      <div id="customBlock" style="display:none;">
+        <label>Custom battery size (kWh)</label>
+        <input id="customKwh" type="number" min="5" value="75" />
+      </div>
+
+      <div class="row">
+        <div><label>Start SoC (%)</label><input id="startSoc" type="number" min="0" max="99" value="10" /></div>
+        <div><label>Target SoC (%)</label><input id="targetSoc" type="number" min="1" max="100" value="80" /></div>
+      </div>
+
+      <label>Charging curve realism</label>
+      <div class="chips" id="modeChips">
+        <span class="pill active" data-loss="0.92" data-curve="true">Realistic</span>
+        <span class="pill" data-loss="1.00" data-curve="false">Ideal</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <label>Select charger</label>
+      <div class="chips" id="chargerChips">
+        <span class="pill active" data-kw="8" data-price="0.16">L2 8kW</span>
+        <span class="pill" data-kw="15" data-price="0.25">L2 15kW</span>
+        <span class="pill" data-kw="50" data-price="0.35">DC 50kW</span>
+        <span class="pill" data-kw="150" data-price="0.45">DC 150kW</span>
+        <span class="pill" data-kw="300" data-price="0.50">DC 300kW</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <h2>Results</h2>
+    <div class="kpi">
+      <div class="box"><div class="label">Energy to add</div><div class="value" id="needKwh">—</div></div>
+      <div class="box"><div class="label">Estimated time</div><div class="value" id="timeHrs">—</div></div>
+      <div class="box"><div class="label">Estimated cost</div><div class="value" id="costUsd">—</div></div>
+    </div>
+    <details><summary>Show table</summary>
+      <table id="tbl"><thead><tr><th>Charger</th><th>kW</th><th>$/kWh</th><th>Time</th><th>Cost</th></tr></thead><tbody></tbody></table>
+    </details>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+
+  const vehicleEl = document.getElementById('vehicle'),
+        customBlock = document.getElementById('customBlock'),
+        customKwh = document.getElementById('customKwh'),
+        startSoc=document.getElementById('startSoc'),
+        targetSoc=document.getElementById('targetSoc'),
+        needKwhEl=document.getElementById('needKwh'),
+        timeHrsEl=document.getElementById('timeHrs'),
+        costUsdEl=document.getElementById('costUsd'),
+        tblBody=document.querySelector('#tbl tbody');
+
+  function getBatteryKwh(){ return vehicleEl.value==='custom'?parseFloat(customKwh.value||0):parseFloat(vehicleEl.value); }
+  function clamp(v,l,h){ return Math.max(l,Math.min(h,v)); }
+  function calcEnergyToAdd(kwhPack,s,t){ return kwhPack*Math.max(0,(clamp(t,1,100)-clamp(s,0,99)))/100; }
+  function taperedPowerDC(ratedKw,soc){ if(soc<=60) return ratedKw; const frac=(100-soc)/40; return ratedKw*(0.3+0.7*frac); }
+  function estimateTimeHours(kwhNeeded,chargerKw,mode,s,t){
+    if(kwhNeeded<=0)return 0; const isDC=chargerKw>=50;
+    if(!isDC||!mode.curve) return kwhNeeded/(chargerKw*(mode.curve?mode.eff:1));
+    let time=0; while(s<t){ const next=Math.min(t,s+1),segKwh=((next-s)/100)*getBatteryKwh(); time+=segKwh/(taperedPowerDC(chargerKw,s)*mode.eff); s=next; } return time;
+  }
+  function fmtHours(h){const H=Math.floor(h),m=Math.round((h-H)*60);return `${H}h ${String(m).padStart(2,'0')}m`;}
+  function fmtMoney(x){return '$'+x.toFixed(2);}
+  function fmtKwh(x){return (Math.round(x*10)/10).toFixed(1)+' kWh';}
+
+  function recalc(){
+    const pack=getBatteryKwh(), s=parseFloat(startSoc.value), t=parseFloat(targetSoc.value);
+    const modePill=document.querySelector('#modeChips .pill.active');
+    const mode={eff:parseFloat(modePill.dataset.loss),curve:modePill.dataset.curve==='true'};
+    const chargerPill=document.querySelector('#chargerChips .pill.active');
+    const ch={kw:parseFloat(chargerPill.dataset.kw),price:parseFloat(chargerPill.dataset.price)};
+    const need=calcEnergyToAdd(pack,s,t); const meter=mode.curve?(need/mode.eff):need;
+    needKwhEl.textContent=fmtKwh(need); timeHrsEl.textContent=fmtHours(estimateTimeHours(need,ch.kw,mode,s,t)); costUsdEl.textContent=fmtMoney(meter*ch.price);
+    tblBody.innerHTML=''; 
+    [{n:'L2 8kW',kw:8,p:0.16},{n:'L2 15kW',kw:15,p:0.25},{n:'DC 50kW',kw:50,p:0.35},{n:'DC 150kW',kw:150,p:0.45},{n:'DC 300kW',kw:300,p:0.50}]
+    .forEach(c=>{const time=estimateTimeHours(need,c.kw,mode,s,t),cost=(mode.curve?need/mode.eff:need)*c.p; tblBody.innerHTML+=`<tr><td>${c.n}</td><td>${c.kw}</td><td>$${c.p.toFixed(2)}</td><td>${fmtHours(time)}</td><td>${fmtMoney(cost)}</td></tr>`;});
+  }
+
+  // Explicit ID targeting
+  document.getElementById('modeChips').addEventListener('click', e=>{
+    const pill=e.target.closest('.pill'); if(!pill) return;
+    document.querySelectorAll('#modeChips .pill').forEach(p=>p.classList.remove('active'));
+    pill.classList.add('active'); recalc();
+  });
+
+  document.getElementById('chargerChips').addEventListener('click', e=>{
+    const pill=e.target.closest('.pill'); if(!pill) return;
+    document.querySelectorAll('#chargerChips .pill').forEach(p=>p.classList.remove('active'));
+    pill.classList.add('active'); recalc();
+  });
+
+  vehicleEl.addEventListener('change',()=>{ customBlock.style.display=vehicleEl.value==='custom'?'block':'none'; recalc(); });
+  [customKwh,startSoc,targetSoc].forEach(el=>el.addEventListener('input',recalc));
+
+  recalc();
+});
+</script>
+</body>
+</html>
