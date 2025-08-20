@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', function(){
     const need=calcEnergyToAdd(pack,s,t); const meter=mode.curve?(need/mode.eff):need;
     needKwhEl.textContent=fmtKwh(need); timeHrsEl.textContent=fmtHours(estimateTimeHours(need,ch.kw,mode,s,t)); costUsdEl.textContent=fmtMoney(meter*ch.price);
     tblBody.innerHTML=''; 
-    [{n:'L2 8kW',kw:8,p:0.16},{n:'L2 15kW',kw:15,p:0.25},{n:'DC 50kW',kw:50,p:0.35},{n:'DC 150kW',kw:150,p:0.45},{n:'DC 300kW',kw:300,p:0.50}]
+    [{n:'L2 8kW',kw:8,p:0.17},{n:'L2 15kW',kw:15,p:0.18},{n:'DC 50kW',kw:50,p:0.35},{n:'DC 150kW',kw:150,p:0.45},{n:'DC 300kW',kw:300,p:0.50}]
     .forEach(c=>{const time=estimateTimeHours(need,c.kw,mode,s,t),cost=(mode.curve?need/mode.eff:need)*c.p; tblBody.innerHTML+=`<tr><td>${c.n}</td><td>${c.kw}</td><td>$${c.p.toFixed(2)}</td><td>${fmtHours(time)}</td><td>${fmtMoney(cost)}</td></tr>`;});
   }
 
@@ -170,4 +170,5 @@ document.addEventListener('DOMContentLoaded', function(){
 </script>
 </body>
 </html>
+
 
