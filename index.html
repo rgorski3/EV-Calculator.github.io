@@ -40,6 +40,7 @@
   .kpi .value { font-size: 20px; font-weight: 700; margin-top: 4px; }
   table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
   th, td { border-bottom: 1px solid #1f2937; padding: 8px; text-align: left; }
+  .owner-note { margin-top: 40px; font-size: 12px; color: var(--muted); text-align: center; }
 </style>
 </head>
 <body>
@@ -88,8 +89,8 @@
     <div class="card">
       <label>Select charger</label>
       <div class="chips" id="chargerChips">
-        <span class="pill active" data-kw="8" data-price="0.16">L2 8kW</span>
-        <span class="pill" data-kw="15" data-price="0.25">L2 15kW</span>
+        <span class="pill active" data-kw="8" data-price="0.17">L2 8kW</span>
+        <span class="pill" data-kw="15" data-price="0.18">L2 15kW</span>
         <span class="pill" data-kw="50" data-price="0.35">DC 50kW</span>
         <span class="pill" data-kw="150" data-price="0.45">DC 150kW</span>
         <span class="pill" data-kw="300" data-price="0.50">DC 300kW</span>
@@ -108,6 +109,7 @@
       <table id="tbl"><thead><tr><th>Charger</th><th>kW</th><th>$/kWh</th><th>Time</th><th>Cost</th></tr></thead><tbody></tbody></table>
     </details>
   </div>
+  <div class="owner-note">Owned and managed by Robert Gorski</div>
 </div>
 
 <script>
@@ -145,7 +147,7 @@ document.addEventListener('DOMContentLoaded', function(){
     const need=calcEnergyToAdd(pack,s,t); const meter=mode.curve?(need/mode.eff):need;
     needKwhEl.textContent=fmtKwh(need); timeHrsEl.textContent=fmtHours(estimateTimeHours(need,ch.kw,mode,s,t)); costUsdEl.textContent=fmtMoney(meter*ch.price);
     tblBody.innerHTML=''; 
-    [{n:'L2 8kW',kw:8,p:0.16},{n:'L2 15kW',kw:15,p:0.25},{n:'DC 50kW',kw:50,p:0.35},{n:'DC 150kW',kw:150,p:0.45},{n:'DC 300kW',kw:300,p:0.50}]
+    [{n:'L2 8kW',kw:8,p:0.17},{n:'L2 15kW',kw:15,p:0.18},{n:'DC 50kW',kw:50,p:0.35},{n:'DC 150kW',kw:150,p:0.45},{n:'DC 300kW',kw:300,p:0.50}]
     .forEach(c=>{const time=estimateTimeHours(need,c.kw,mode,s,t),cost=(mode.curve?need/mode.eff:need)*c.p; tblBody.innerHTML+=`<tr><td>${c.n}</td><td>${c.kw}</td><td>$${c.p.toFixed(2)}</td><td>${fmtHours(time)}</td><td>${fmtMoney(cost)}</td></tr>`;});
   }
 
