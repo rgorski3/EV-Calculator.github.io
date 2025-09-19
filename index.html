@@ -89,17 +89,23 @@
     <div class="card">
       <label>Select charger</label>
       <div class="chips" id="chargerChips">
-        <span class="pill active" data-kw="8" data-price="0.17">L2 8kW</span>
-        <span class="pill" data-kw="15" data-price="0.18">L2 15kW</span>
-        <span class="pill" data-kw="50" data-price="0.35">DC 50kW</span>
-        <span class="pill" data-kw="150" data-price="0.45">DC 150kW</span>
-        <span class="pill" data-kw="300" data-price="0.50">DC 300kW</span>
+        <span class="pill active" data-kw="8" data-standard-price="0.17" data-peak-price="0.2339">L2 8kW</span>
+        <span class="pill" data-kw="15" data-standard-price="0.18" data-peak-price="0.2439">L2 15kW</span>
+        <span class="pill" data-kw="50" data-standard-price="0.35" data-peak-price="0.45">DC 50kW</span>
+        <span class="pill" data-kw="150" data-standard-price="0.45" data-peak-price="0.60">DC 150kW</span>
+        <span class="pill" data-kw="300" data-standard-price="0.50" data-peak-price="0.68">DC 300kW</span>
+      </div>
+      
+      <label>Energy pricing</label>
+      <div class="chips" id="pricingChips">
+        <span class="pill active" data-pricing="standard">Non-Peak</span>
+        <span class="pill" data-pricing="peak">Peak</span>
       </div>
     </div>
   </div>
 
   <div class="card" style="margin-top:16px;">
-    <h2>Results</h2>
+    <h2>Results <span id="pricingIndicator" style="font-size: 14px; color: var(--muted); font-weight: normal;">(Non-Peak Pricing)</span></h2>
     <div class="kpi">
       <div class="box"><div class="label">Energy to add</div><div class="value" id="needKwh">—</div></div>
       <div class="box"><div class="label">Estimated time</div><div class="value" id="timeHrs">—</div></div>
@@ -123,7 +129,8 @@ document.addEventListener('DOMContentLoaded', function(){
         needKwhEl=document.getElementById('needKwh'),
         timeHrsEl=document.getElementById('timeHrs'),
         costUsdEl=document.getElementById('costUsd'),
-        tblBody=document.querySelector('#tbl tbody');
+        tblBody=document.querySelector('#tbl tbody'),
+        pricingIndicator=document.getElementById('pricingIndicator');
 
   function getBatteryKwh(){ return vehicleEl.value==='custom'?parseFloat(customKwh.value||0):parseFloat(vehicleEl.value); }
   function clamp(v,l,h){ return Math.max(l,Math.min(h,v)); }
@@ -138,17 +145,40 @@ document.addEventListener('DOMContentLoaded', function(){
   function fmtMoney(x){return '$'+x.toFixed(2);}
   function fmtKwh(x){return (Math.round(x*10)/10).toFixed(1)+' kWh';}
 
+  function getCurrentPrice(chargerPill, pricingMode) {
+    return pricingMode === 'peak' 
+      ? parseFloat(chargerPill.dataset.peakPrice)
+      : parseFloat(chargerPill.dataset.standardPrice);
+  }
+
   function recalc(){
     const pack=getBatteryKwh(), s=parseFloat(startSoc.value), t=parseFloat(targetSoc.value);
     const modePill=document.querySelector('#modeChips .pill.active');
     const mode={eff:parseFloat(modePill.dataset.loss),curve:modePill.dataset.curve==='true'};
     const chargerPill=document.querySelector('#chargerChips .pill.active');
-    const ch={kw:parseFloat(chargerPill.dataset.kw),price:parseFloat(chargerPill.dataset.price)};
+    const pricingPill=document.querySelector('#pricingChips .pill.active');
+    const pricingMode=pricingPill.dataset.pricing;
+    const ch={kw:parseFloat(chargerPill.dataset.kw),price:getCurrentPrice(chargerPill, pricingMode)};
     const need=calcEnergyToAdd(pack,s,t); const meter=mode.curve?(need/mode.eff):need;
     needKwhEl.textContent=fmtKwh(need); timeHrsEl.textContent=fmtHours(estimateTimeHours(need,ch.kw,mode,s,t)); costUsdEl.textContent=fmtMoney(meter*ch.price);
+    pricingIndicator.textContent=`(${pricingMode === 'peak' ? 'Peak' : 'Non-Peak'} Pricing)`;
     tblBody.innerHTML=''; 
-    [{n:'L2 8kW',kw:8,p:0.17},{n:'L2 15kW',kw:15,p:0.18},{n:'DC 50kW',kw:50,p:0.35},{n:'DC 150kW',kw:150,p:0.45},{n:'DC 300kW',kw:300,p:0.50}]
-    .forEach(c=>{const time=estimateTimeHours(need,c.kw,mode,s,t),cost=(mode.curve?need/mode.eff:need)*c.p; tblBody.innerHTML+=`<tr><td>${c.n}</td><td>${c.kw}</td><td>$${c.p.toFixed(2)}</td><td>${fmtHours(time)}</td><td>${fmtMoney(cost)}</td></tr>`;});
+    
+    // Update table with current pricing mode
+    const chargers = [
+      {n:'L2 8kW',kw:8,standardPrice:0.17,peakPrice:0.2339},
+      {n:'L2 15kW',kw:15,standardPrice:0.18,peakPrice:0.2439},
+      {n:'DC 50kW',kw:50,standardPrice:0.35,peakPrice:0.45},
+      {n:'DC 150kW',kw:150,standardPrice:0.45,peakPrice:0.60},
+      {n:'DC 300kW',kw:300,standardPrice:0.50,peakPrice:0.68}
+    ];
+    
+    chargers.forEach(c=>{
+      const price = pricingMode === 'peak' ? c.peakPrice : c.standardPrice;
+      const time=estimateTimeHours(need,c.kw,mode,s,t);
+      const cost=(mode.curve?need/mode.eff:need)*price; 
+      tblBody.innerHTML+=`<tr><td>${c.n}</td><td>${c.kw}</td><td>$${price.toFixed(2)}</td><td>${fmtHours(time)}</td><td>${fmtMoney(cost)}</td></tr>`;
+    });
   }
 
   // Explicit ID targeting
@@ -161,6 +191,12 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('chargerChips').addEventListener('click', e=>{
     const pill=e.target.closest('.pill'); if(!pill) return;
     document.querySelectorAll('#chargerChips .pill').forEach(p=>p.classList.remove('active'));
+    pill.classList.add('active'); recalc();
+  });
+
+  document.getElementById('pricingChips').addEventListener('click', e=>{
+    const pill=e.target.closest('.pill'); if(!pill) return;
+    document.querySelectorAll('#pricingChips .pill').forEach(p=>p.classList.remove('active'));
     pill.classList.add('active'); recalc();
   });
 
